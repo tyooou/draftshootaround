@@ -7654,20 +7654,25 @@
     // compact: just the swatch and makes, for cameras far enough away that full cards would pile into
     // each other. A card's size depends only on the name and whether the player has finished, never
     // on the counts, so the layout below holds still as the numbers tick. Until they finish, the
-    // card's right edge holds their shot meter (METER_STRIP pixels wide). Drawn at the pixel font's
-    // own 8px, unscaled, so they stay small and sharp.
-    const METER_STRIP = 5,
-      CARD_H = 10;
+    // card's right edge holds their shot meter (METER_STRIP pixels wide). Laid out at the pixel
+    // font's own 8px and drawn CARD_K times that, a whole number, so they stay sharp.
+    const METER_STRIP = 7,
+      CARD_H = 14,
+      CARD_K = 2;
     function cardSize(p, compact) {
+      const s = baseCardSize(p, compact);
+      return { w: s.w * CARD_K, h: s.h * CARD_K };
+    }
+    function baseCardSize(p, compact) {
       const strip = p.place ? 0 : METER_STRIP;
       ctx.font = `700 8px ${PIXEL_FONT}`;
       const count = Math.ceil(
         Math.max(ctx.measureText("999").width, ctx.measureText("#12").width),
       );
-      if (compact) return { w: count + 10 + strip, h: CARD_H };
+      if (compact) return { w: count + 15 + strip, h: CARD_H };
       ctx.font = `400 8px ${PIXEL_FONT}`;
       return {
-        w: Math.ceil(ctx.measureText(p.short).width) + 8 + 4 + count + 2 + strip,
+        w: Math.ceil(ctx.measureText(p.short).width) + 11 + 6 + count + 4 + strip,
         h: CARD_H,
       };
     }
@@ -7823,7 +7828,7 @@
         const nx = clamp(feet[0], best.x, best.x + best.w),
           ny = clamp(feet[1], best.y, best.y + best.h),
           len = Math.hypot(nx - feet[0], ny - feet[1]);
-        let lead = len >= 10;
+        let lead = len >= 14;
         for (let i = 1; lead && i < len / 4; i++) {
           const u = (i * 4) / len,
             x = feet[0] + (nx - feet[0]) * u,
@@ -7844,15 +7849,22 @@
       if (!lead) return;
       const [fx, fy, nx, ny] = lead;
       ctx.strokeStyle = `hsl(${p.hue} 55% 62%)`;
-      ctx.lineWidth = 1;
+      ctx.lineWidth = CARD_K;
       ctx.beginPath();
       ctx.moveTo(fx, fy);
       ctx.lineTo(nx, ny);
       ctx.stroke();
       ctx.fillStyle = ctx.strokeStyle;
-      ctx.fillRect(Math.round(fx) - 1, Math.round(fy) - 1, 3, 3);
+      ctx.fillRect(Math.round(fx) - 2, Math.round(fy) - 2, 4, 4);
     }
     function drawCard(p, { x, y, w, h }, compact) {
+      ctx.save();
+      ctx.translate(Math.round(x), Math.round(y));
+      ctx.scale(CARD_K, CARD_K);
+      drawCardAt(p, 0, 0, w / CARD_K, h / CARD_K, compact);
+      ctx.restore();
+    }
+    function drawCardAt(p, x, y, w, h, compact) {
       ctx.fillStyle = "rgba(16, 18, 22, 0.9)";
       ctx.fillRect(x, y, w, h);
       if (p.flash > 0)
@@ -7860,21 +7872,21 @@
       ctx.textBaseline = "top";
       ctx.textAlign = "left";
       if (!p.place) {
-        drawMeter(p, x + w - 4, y + 2, 2, h - 4);
+        drawMeter(p, x + w - 6, y + 3, 2, h - 6);
         w -= METER_STRIP;
       }
       ctx.fillStyle = `hsl(${p.hue} 45% 58%)`;
-      ctx.fillRect(x + 2, y + 3, 4, 4);
+      ctx.fillRect(x + 4, y + 5, 4, 4);
       if (!compact) {
         ctx.font = `400 8px ${PIXEL_FONT}`;
         ctx.fillStyle = "rgba(238, 240, 242, 0.8)";
-        ctx.fillText(p.short, x + 8, y + 1);
+        ctx.fillText(p.short, x + 11, y + 3);
       }
       // makes, or their place once they finish, at the right
       ctx.font = `700 8px ${PIXEL_FONT}`;
       ctx.textAlign = "right";
       ctx.fillStyle = p.place ? COL.meter : COL.ink;
-      ctx.fillText(p.place ? `#${p.place}` : String(p.made), x + w - 2, y + 1);
+      ctx.fillText(p.place ? `#${p.place}` : String(p.made), x + w - 4, y + 3);
       ctx.textAlign = "left";
     }
 
